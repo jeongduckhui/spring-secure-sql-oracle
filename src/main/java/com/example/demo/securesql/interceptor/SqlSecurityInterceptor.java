@@ -1,5 +1,6 @@
 package com.example.demo.securesql.interceptor;
 
+import com.example.demo.securesql.annotation.SecureSqlRequired;
 import com.example.demo.securesql.validator.OracleValidator;
 import org.apache.ibatis.executor.Executor;
 import org.apache.ibatis.mapping.BoundSql;
@@ -9,11 +10,15 @@ import org.apache.ibatis.plugin.*;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
 
+import java.lang.reflect.Method;
 import java.util.Properties;
 
 /**
  * MyBatis SQL 실행 직전에 SQL 보안 검증을 수행하는 Interceptor.
  *
+ * - @SecureSqlRequired 애노테이션이 붙은 Mapper 메서드만 검증 대상
+ * - 애노테이션이 없으면 모든 SQL은 그대로 통과
+ * 
  * - Executor.query() 가 호출되기 직전에 SQL 문자열을 가로챔
  * - OracleValidator.validate(sql) 호출
  * - 검증 실패 시 RuntimeException 발생 -> SQL 실행 차단
@@ -39,6 +44,12 @@ public class SqlSecurityInterceptor implements Interceptor {
         // invocation.getArgs()는 @Signature에 정의된 순서대로 인자를 배열로 반환
         // MappedStatement 추출
         MappedStatement ms = (MappedStatement) invocation.getArgs()[0];
+        
+        // 애노테이션이 없는 SQL은 검증하지 않음
+        if (!hasSecureSqlRequired(ms)) {
+            return invocation.proceed();
+        }
+        
         // SQL 파라미터 객체 추출
         Object parameterObject = invocation.getArgs()[1];
 
@@ -55,6 +66,34 @@ public class SqlSecurityInterceptor implements Interceptor {
         // 검증 통과 시, 원래 가로챘던 Executor.query() 메서드를 실제 실행
         // 이 결과를 호출한 서비스 계층으로 반환
         return invocation.proceed();
+    }
+    
+    /**
+     * Mapper 메서드에 @SecureSqlRequired 애노테이션이 붙어있는지 확인
+     */
+    private boolean hasSecureSqlRequired(MappedStatement ms) {
+        try {
+            // ex) com.example.demo.mapper.SalesMapper.selectSalesReport
+            String id = ms.getId();
+            int idx = id.lastIndexOf('.');
+            if (idx < 0) return false;
+
+            String className = id.substring(0, idx);
+            String methodName = id.substring(idx + 1);
+
+            Class<?> mapperClass = Class.forName(className);
+
+            for (Method method : mapperClass.getMethods()) {
+                if (method.getName().equals(methodName)
+                        && method.isAnnotationPresent(SecureSqlRequired.class)) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            // reflection 실패 시 SecureSqlRequired 애노테이션이 없다고 간주하고 정상 흐름 유지
+            return false;
+        }
+        return false;
     }
 
     /*

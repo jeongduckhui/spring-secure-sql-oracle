@@ -30,8 +30,9 @@ dependencies {
     // MyBatis
     implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
 
-    // Oracle JDBC
-    implementation 'com.oracle.database.jdbc:ojdbc11:23.2.0.0'
+	runtimeOnly 'com.h2database:h2'
+    // H2 (테스트용 인메모리 DB)
+    testImplementation 'com.h2database:h2'
 
     // JSQLParser 4.6 (안정 버전)
     implementation 'com.github.jsqlparser:jsqlparser:4.6'
