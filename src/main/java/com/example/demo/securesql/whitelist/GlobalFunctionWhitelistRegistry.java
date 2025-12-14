@@ -36,6 +36,7 @@ public class GlobalFunctionWhitelistRegistry {
     	// 클래스패스에서 기본 화이트리스트 로드
         loadFromClasspath();
         
+        /*
         // 외부 파일 (./config/...)이 존재하는지 확인
         if (Files.exists(EXTERNAL)) {
         	// 존재하면 외부 파일 로드 (이때 기존 클래스패스 목록을 덮어씀)
@@ -45,6 +46,16 @@ public class GlobalFunctionWhitelistRegistry {
         // 외부 파일의 부모 디렉토리(config/)가 존재하는 경우
         if (EXTERNAL.getParent() != null) {
         	// 해당 디렉토리에 대해 파일 변경 감시(WatchService) 쓰레드 시작
+            startWatch(EXTERNAL.getParent());
+        }
+        */
+        
+        if (EXTERNAL != null && Files.exists(EXTERNAL)) {
+            loadFromExternal(EXTERNAL);
+        }
+
+        // 3️⃣ 외부 파일 watch (존재할 때만)
+        if (EXTERNAL != null && EXTERNAL.getParent() != null) {
             startWatch(EXTERNAL.getParent());
         }
     }

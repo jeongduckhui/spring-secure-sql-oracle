@@ -1,36 +1,34 @@
 package com.example.demo.securesql.whitelist;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.*;
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import lombok.extern.slf4j.Slf4j;
-
 /**
- * 테이블/컬럼 화이트리스트 관리 클래스 (동적 핫-리로드).
+ * SQL 함수 화이트리스트 관리 클래스
  *
- * - classpath:/TableWhitelist.properties 기본 로드
- * - ./config/TableWhitelist.properties 존재하면 override
- * - ./config 디렉터리 WatchService 로 감시 (변경 시 자동 재로딩)
+ * - classpath:/FunctionWhitelist.properties 기본 로드
+ * - ./config/FunctionWhitelist.properties 존재 시 override
+ * - 외부 파일 변경 시 핫 리로드 가능
  */
 @Slf4j
-public class DynamicTableWhitelistRegistry {
+public class GlobalFunctionWhitelistRegistry_new {
 
     /** classpath 기본 리소스 */
-    private static final String CLASSPATH_RESOURCE = "/TableWhitelist.properties";
+    private static final String CLASSPATH_RESOURCE = "/FunctionWhitelist.properties";
 
     /** 외부 설정 파일 (현재 미사용) */
-    // private static final Path EXTERNAL = Paths.get("config/TableWhitelist.properties");
+    // private static final Path EXTERNAL = Paths.get("config/FunctionWhitelist.properties");
     private static final Path EXTERNAL = null;
 
-    /** [TABLE -> COLUMNS] */
-    private static final Map<String, Set<String>> TABLE_COLUMNS = new ConcurrentHashMap<>();
+    /** 허용된 함수 목록 */
+    private static final Set<String> FUNCTIONS = ConcurrentHashMap.newKeySet();
 
     /* ===============================
        static initialization
@@ -55,31 +53,32 @@ public class DynamicTableWhitelistRegistry {
        =============================== */
 
     private static void clearAll() {
-        TABLE_COLUMNS.clear();
+        FUNCTIONS.clear();
     }
 
     private static void loadFromClasspath() {
         try (InputStream in =
-                 DynamicTableWhitelistRegistry.class.getResourceAsStream(CLASSPATH_RESOURCE)) {
+                 GlobalFunctionWhitelistRegistry_new.class
+                     .getResourceAsStream(CLASSPATH_RESOURCE)) {
 
             if (in == null) {
-                log.warn("[TableWhitelist] Classpath resource not found: {}", CLASSPATH_RESOURCE);
+                log.warn("[FunctionWhitelist] Classpath resource not found: {}", CLASSPATH_RESOURCE);
                 return;
             }
 
             loadStream(in, false);
 
         } catch (Exception e) {
-            throw new RuntimeException("Classpath whitelist 로드 실패", e);
+            throw new RuntimeException("Classpath function whitelist 로드 실패", e);
         }
     }
 
     private static void loadFromExternal(Path path) {
         try (InputStream in = Files.newInputStream(path)) {
             loadStream(in, true);
-            log.info("[TableWhitelist] External file loaded: {}", path.toAbsolutePath());
+            log.info("[FunctionWhitelist] External file loaded: {}", path.toAbsolutePath());
         } catch (Exception e) {
-            log.error("[TableWhitelist] External file load failed: {}", path.toAbsolutePath(), e);
+            log.error("[FunctionWhitelist] External file load failed: {}", path.toAbsolutePath(), e);
         }
     }
 
@@ -91,36 +90,12 @@ public class DynamicTableWhitelistRegistry {
 
         try (BufferedReader br = new BufferedReader(new InputStreamReader(in))) {
             String line;
-            String currentTable = null;
-
             while ((line = br.readLine()) != null) {
                 line = line.trim();
 
-                if (line.isEmpty()) {
-                    currentTable = null;
-                    continue;
-                }
-                if (line.startsWith("#")) continue;
+                if (line.isEmpty() || line.startsWith("#")) continue;
 
-                String[] parts = line.split("=", 2);
-                if (parts.length != 2) continue;
-
-                String key = parts[0].trim();
-                String val = parts[1].trim();
-
-                if ("table".equalsIgnoreCase(key)) {
-                    currentTable = val.toUpperCase();
-                    TABLE_COLUMNS.putIfAbsent(currentTable, ConcurrentHashMap.newKeySet());
-                }
-                else if ("columns".equalsIgnoreCase(key) && currentTable != null) {
-                    Set<String> cols = new HashSet<>();
-                    for (String c : val.split(",")) {
-                        if (!c.isBlank()) {
-                            cols.add(c.trim().toUpperCase());
-                        }
-                    }
-                    TABLE_COLUMNS.put(currentTable, cols);
-                }
+                FUNCTIONS.add(line.toUpperCase());
             }
         }
     }
@@ -147,15 +122,15 @@ public class DynamicTableWhitelistRegistry {
                                 && changed.endsWith(EXTERNAL.getFileName())) {
 
                             loadFromExternal(EXTERNAL);
-                            log.info("[TableWhitelist] External whitelist reloaded.");
+                            log.info("[FunctionWhitelist] External whitelist reloaded.");
                         }
                     }
                     key.reset();
                 }
             } catch (Exception e) {
-                log.error("[TableWhitelist] File Watch Service terminated.", e);
+                log.error("[FunctionWhitelist] File Watch Service terminated.", e);
             }
-        }, "TableWhitelistReloadWatcher");
+        }, "FunctionWhitelistReloadWatcher");
 
         t.setDaemon(true);
         t.start();
@@ -165,13 +140,12 @@ public class DynamicTableWhitelistRegistry {
        public API
        =============================== */
 
-    public static Set<String> getColumnsForTable(String table) {
-        if (table == null) return Collections.emptySet();
-        return TABLE_COLUMNS.getOrDefault(table.toUpperCase(), Collections.emptySet());
+    public static boolean isAllowedFunction(String functionName) {
+        if (functionName == null) return false;
+        return FUNCTIONS.contains(functionName.toUpperCase());
     }
 
-    public static boolean isAllowedColumn(String table, String col) {
-        if (table == null || col == null) return false;
-        return getColumnsForTable(table).contains(col.toUpperCase());
+    public static Set<String> all() {
+        return Collections.unmodifiableSet(FUNCTIONS);
     }
 }

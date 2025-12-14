@@ -6,6 +6,7 @@ import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
 import javax.sql.DataSource;
 
@@ -25,6 +26,15 @@ public class MyBatisSecurityConfig {
         SqlSessionFactoryBean factory = new SqlSessionFactoryBean();
         // 팩토리에 데이터 소스를 설정. MyBatis가 이 DataSource를 사용하여 DB에 연결
         factory.setDataSource(dataSource);
+        
+        // SqlSessionFactory를 직접 만들 경우 application.properties의 mybatis.mapper-locations 무시됨
+        // 따라서 xml 파일의 path를 명시해줘야 함
+        // @MapperScan → 인터페이스 등록
+        // SqlSessionFactory → XML + SQL + Plugin 등록
+        factory.setMapperLocations(
+                new PathMatchingResourcePatternResolver()
+                    .getResources("classpath:/mapper/**/*.xml")
+            );
 
         // SQL 보안 Interceptor 등록
         // setPlugins() 메서드를 사용하여 MyBatis 플러그인(인터셉터) 목록을 설정

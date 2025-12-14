@@ -11,7 +11,15 @@
             COUNT(cf.customer_id) AS total_managed_customers,
             ROUND(AVG(cf.monthly_subscription), 2) AS avg_monthly_subscription,
             SUM(cf.total_ltv) AS portfolio_value,
-            ROUND(AVG(MONTHS_BETWEEN(SYSDATE, sr.hire_date)), 0) AS avg_rep_tenure_months,
+
+            /* 🔧 MONTHS_BETWEEN 제거 (H2 테스트용) */
+            ROUND(
+                AVG(
+                    DATEDIFF('MONTH', sr.hire_date, CURRENT_DATE)
+                ),
+                0
+            ) AS avg_rep_tenure_months,
+
             ROUND(
                 AVG(
                     COALESCE(cs.negative_trend_months * 10, 0)
