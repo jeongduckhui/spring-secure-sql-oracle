@@ -1,0 +1,241 @@
+// [프론트엔드] example.js (또는 Vue/React 컴포넌트 내부)
+
+import axios from 'axios';
+
+// 백엔드로 전송할 파라미터 객체
+const params = {
+    "colA": 'TEST_VALUE_123',
+    // SELECT 절에 들어갈 컬럼 목록 (그룹화 컬럼 + 집계 컬럼)
+    "columnList": 'COL_A, COL_B, SUM(COL_C) AS TOTAL_C', 
+    // GROUP BY 절에 들어갈 컬럼 목록 (순수한 그룹화 기준 컬럼만)
+    "groupByList": 'COL_A, COL_B' 
+};
+
+// 백엔드 API 호출 함수
+async function fetchAggregatedData() {
+    try {
+        const response = await axios.post('/api/data/aggregate', params, {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        console.log("조회 성공:", response.data);
+        return response.data;
+        
+    } catch (error) {
+        console.error("API 호출 실패:", error);
+    }
+}
+
+// 함수 실행 예시
+// fetchAggregatedData();
+
+========================================================================
+
+// [백엔드] com.example.demo.controller.DataController.java
+
+package com.example.demo.controller;
+
+import com.example.demo.service.DataService;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/data")
+public class DataController {
+
+    @Autowired
+    private DataService dataService;
+
+    @PostMapping("/aggregate")
+    public List<Map<String, Object>> getAggregatedData(@RequestBody Map<String, Object> requestMap) {
+        
+        // requestMap에는 이제 'colA', 'columnList', 'groupByList' 세 개의 키가 포함됩니다.
+        return dataService.getAggregatedData(requestMap);
+    }
+}
+
+========================================================================
+
+// [백엔드] com.example.demo.service.DataService.java
+
+package com.example.demo.service;
+
+import com.example.demo.mapper.DataMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
+
+@Service
+public class DataService {
+
+    @Autowired
+    private DataMapper dataMapper;
+
+    public List<Map<String, Object>> getAggregatedData(Map<String, Object> params) {
+        
+        // ******************************************************************
+        // 중요: 보안 및 유효성 검증 로직 (필수)
+        // 1. 필수 키(colA, columnList, groupByList) 존재 여부 검사.
+        // 2. columnList와 groupByList에 SQL Injection 요소(함수, 키워드 등)가 없는지 
+        //    별도의 화이트리스트 기반 검증을 수행해야 합니다.
+        // ******************************************************************
+        
+        // 검증 후 Mapper에 Map을 그대로 전달
+        return dataMapper.selectAggregatedData(params);
+    }
+}
+
+========================================================================
+
+// [백엔드] com.example.demo.mapper.DataMapper.java
+
+package com.example.demo.mapper;
+
+import org.apache.ibatis.annotations.Mapper;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Map;
+
+@Mapper
+@Repository
+public interface DataMapper {
+
+    // 파라미터 타입을 Map으로 유지
+    List<Map<String, Object>> selectAggregatedData(Map<String, Object> params);
+}
+
+========================================================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.demo.mapper.DataMapper">
+
+    <select id="selectAggregatedData" 
+            parameterType="java.util.Map"
+            resultType="java.util.Map">
+        
+        SELECT 
+            -- SELECT 절: 그룹화 컬럼 + 집계 컬럼 (예: COL_A, COL_B, SUM(COL_C) AS TOTAL_C)
+            ${columnList}
+        FROM TABLE_A
+        WHERE 1=1
+            AND COL_A = #{colA}
+        
+        -- GROUP BY 절: 순수한 그룹화 기준 컬럼만 사용 (예: COL_A, COL_B)
+        GROUP BY ${groupByList}
+        
+        -- ORDER BY 절: SELECT 절의 컬럼 또는 별칭을 사용 (COL_A, COL_B, TOTAL_C 모두 가능)
+        ORDER BY ${columnList}
+    </select>
+</mapper>
+
+========================================================================
+
+// [백엔드] com.example.demo.mapper.DataMapperTest.java (Test 코드)
+
+package com.example.demo.mapper;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@SpringBootTest 
+@Transactional 
+public class DataMapperTest {
+
+    @Autowired
+    private DataMapper dataMapper;
+
+    @Test
+    void shouldExecuteAggregatedQueryWithSeparateLists() {
+        
+        // 1. 테스트 입력 값 준비 (HashMap 사용)
+        Map<String, Object> params = new HashMap<>();
+        params.put("colA", "TEST_VALUE_A"); 
+        
+        // 🚨 분리된 파라미터 설정
+        params.put("columnList", "COL_A, COL_B, SUM(COL_C) AS TOTAL_C");
+        params.put("groupByList", "COL_A, COL_B"); 
+        
+        // 2. Mapper 실행
+        List<Map<String, Object>> results = dataMapper.selectAggregatedData(params);
+
+        // 3. 결과 검증 (Assertion)
+        if (results != null && !results.isEmpty()) {
+            System.out.println("--- Test Query Results (Map, Separated Lists) ---");
+            for (Map<String, Object> row : results) {
+                // COL_A와 TOTAL_C (SUM의 별칭) 결과 확인
+                System.out.println("COL_A: " + row.get("COL_A") + ", TOTAL_C: " + row.get("TOTAL_C"));
+            }
+            System.out.println("--------------------------------------------------");
+        }
+        
+        // Assertions.assertNotNull(results);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
