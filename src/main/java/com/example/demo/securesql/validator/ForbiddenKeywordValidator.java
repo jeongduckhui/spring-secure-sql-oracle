@@ -45,7 +45,7 @@ public class ForbiddenKeywordValidator {
         PATTERNS = new Pattern[FORBIDDEN.length];
         for (int i = 0; i < FORBIDDEN.length; i++) {
             // 단어 경계 기반 매칭을 위한 패턴 생성
-            // 예: DROP → \bDROP\b. 이는 'DROPSHIP' 같은 컬럼 이름에서 'DROP'이 오탐되는 것을 방지
+            // 예: DROP -> \bDROP\b. 이는 'DROPSHIP' 같은 컬럼 이름에서 'DROP'이 오탐되는 것을 방지
             PATTERNS[i] = Pattern.compile(
             	// 단어 경계 \b와 키워드를 결합
                 "\\b" + FORBIDDEN[i] + "\\b",

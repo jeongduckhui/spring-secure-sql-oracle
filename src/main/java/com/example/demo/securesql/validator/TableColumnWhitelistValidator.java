@@ -7,7 +7,7 @@ import com.example.demo.securesql.whitelist.DynamicTableWhitelistRegistry;
  * 테이블/컬럼 화이트리스트 검증
  *
  * - rootTables/subQueryTables 모두 검사
- * - alias → 실제 테이블 매핑 지원
+ * - alias -> 실제 테이블 매핑 지원
  * - SELECT/WHERE/JOIN 컬럼 전체 검사
  */
 public class TableColumnWhitelistValidator implements SqlValidator {

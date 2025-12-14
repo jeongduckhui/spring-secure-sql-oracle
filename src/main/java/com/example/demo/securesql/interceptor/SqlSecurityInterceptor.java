@@ -16,7 +16,7 @@ import java.util.Properties;
  *
  * - Executor.query() 가 호출되기 직전에 SQL 문자열을 가로챔
  * - OracleValidator.validate(sql) 호출
- * - 검증 실패 시 RuntimeException 발생 → SQL 실행 차단
+ * - 검증 실패 시 RuntimeException 발생 -> SQL 실행 차단
  */
 @Intercepts({
     @Signature(

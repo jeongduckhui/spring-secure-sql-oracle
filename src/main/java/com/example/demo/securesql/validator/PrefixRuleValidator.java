@@ -12,7 +12,7 @@ public class PrefixRuleValidator implements SqlValidator {
         boolean multiTable = meta.getRootTables().size() > 1;
 
         // SELECT 절에 직접 등장한 "루트 컬럼 목록"을 하나씩 검사
-        // 예: SELECT A.COL, B.COL, COL FROM ...  → 각각 "A.COL", "B.COL", "COL"
+        // 예: SELECT A.COL, B.COL, COL FROM ...  -> 각각 "A.COL", "B.COL", "COL"
         for (String col : meta.getRootColumns()) {
 
         	// SELECT * 또는 SELECT T.* 같은 전체 컬럼 조회는 여기서 prefix 규칙 검사 대상이 아님
@@ -31,7 +31,7 @@ public class PrefixRuleValidator implements SqlValidator {
                     );
                 }
                 
-                // 단일 테이블 쿼리인 경우(prefix 없는 컬럼) 허용 → 다음 컬럼 검사로 넘어감
+                // 단일 테이블 쿼리인 경우(prefix 없는 컬럼) 허용 -> 다음 컬럼 검사로 넘어감
                 continue;
             }
 
