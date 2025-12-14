@@ -1,0 +1,551 @@
+{
+	"info": {
+		"_postman_id": "5bfe0292-ac9e-4292-be04-d641f2e0b464",
+		"name": "Secure SQL Oracle Validator – Full Test Collection (30 Cases)",
+		"description": "Oracle Secure SQL Validator – A-4 보안 정책 전체 테스트 (PASS / REJECT)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "14548277"
+	},
+	"item": [
+		{
+			"name": "01_PASS_단일테이블",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"sql\": \"SELECT STORE_ID FROM SALES_TRANSACTION\" }"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "02_PASS_단일테이블_컬럼2개",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"sql\": \"SELECT STORE_ID, PRODUCT_ID FROM SALES_TRANSACTION\" }"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "03_PASS_GROUP_BY",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"sql\": \"SELECT STORE_ID, SUM(QTY) FROM SALES_TRANSACTION GROUP BY STORE_ID\" }"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "04_PASS_JOIN",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"sql\": \"SELECT ST.STORE_ID FROM SALES_TRANSACTION ST JOIN STORE_MASTER SM ON ST.STORE_ID = SM.STORE_ID\" }"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "05_PASS_COMMA_JOIN_WITH_WHERE",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"sql\": \"SELECT A.STORE_ID FROM SALES_TRANSACTION A, STORE_MASTER B WHERE A.STORE_ID = B.STORE_ID\" }"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "06_PASS_SUBQUERY_2_DEPTH",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"sql\": \"SELECT X.STORE_ID FROM (SELECT STORE_ID FROM SALES_TRANSACTION) X\" }"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "07_PASS_SUBQUERY_3_DEPTH",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"sql\": \"SELECT T.STORE_ID FROM (SELECT STORE_ID FROM (SELECT A.STORE_ID FROM SALES_TRANSACTION A)) T\" }"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "08_PASS_EXISTS",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"sql\": \"SELECT STORE_ID FROM SALES_TRANSACTION ST WHERE EXISTS (SELECT 1 FROM STORE_MASTER SM WHERE ST.STORE_ID = SM.STORE_ID)\" }"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "09_FAIL_SELECT_STAR_SINGLE",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"sql\": \"SELECT * FROM SALES_TRANSACTION\" }"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "10_FAIL_SELECT_STAR_MULTI",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"sql\": \"SELECT * FROM SALES_TRANSACTION A, STORE_MASTER B\" }"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "11_FAIL_PREFIX_MISSING",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"sql\": \"SELECT STORE_ID FROM SALES_TRANSACTION A, STORE_MASTER B WHERE A.STORE_ID = B.STORE_ID\" }"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "12_FAIL_CARTESIAN",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"sql\": \"SELECT A.STORE_ID FROM SALES_TRANSACTION A, STORE_MASTER B\" }"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "13_FAIL_OR_INJECTION",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"sql\": \"SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID='1' OR '1'='1'\" }"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "14_FAIL_FUNCTION_NOT_ALLOWED",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"sql\": \"SELECT MEDIAN(QTY) FROM SALES_TRANSACTION\" }"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "15_FAIL_DROP",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"sql\": \"SELECT STORE_ID FROM SALES_TRANSACTION; DROP TABLE USERS\" }"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "16_FAIL_EXECUTE_IMMEDIATE",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"sql\": \"SELECT EXECUTE IMMEDIATE 'DROP TABLE X' FROM DUAL\" }"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "17_FAIL_UTL_FILE",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"sql\": \"SELECT UTL_FILE.FOPEN('X','Y','R') FROM DUAL\" }"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "18_FAIL_DEEP_OR_INJECTION",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"sql\": \"SELECT X.STORE_ID FROM (SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID=STORE_ID OR '1'='1') X\" }"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

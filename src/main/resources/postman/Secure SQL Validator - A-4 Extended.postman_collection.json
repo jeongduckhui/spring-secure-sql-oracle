@@ -1,0 +1,281 @@
+{
+	"info": {
+		"_postman_id": "d087f85a-89c1-4f02-90f9-8c4b1ae38267",
+		"name": "Secure SQL Validator - A-4 Extended",
+		"description": "Oracle SQL 보안 검증 테스트용 Postman Collection (A-4 Extended 표준)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "14548277"
+	},
+	"item": [
+		{
+			"name": "01. 단일 테이블 + 함수 + CASE (OK)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"sql\": \"SELECT STORE_ID, NVL(PRODUCT_ID, 'NONE') AS PID, CASE WHEN QTY > 10 THEN 'Y' ELSE 'N' END FROM SALES_TRANSACTION\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "02. JOIN + SUM + GROUP BY (OK)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"sql\": \"SELECT ST.STORE_ID, SUM(ST.QTY) FROM SALES_TRANSACTION ST JOIN STORE_MASTER SM ON ST.STORE_ID = SM.STORE_ID GROUP BY ST.STORE_ID\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "03. JOIN + prefix 누락 (FAIL)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"sql\": \"SELECT STORE_ID, STORE_NAME FROM SALES_TRANSACTION ST JOIN STORE_MASTER SM ON ST.STORE_ID = SM.STORE_ID\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "04. IN SubQuery (OK)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"sql\": \"SELECT ST.STORE_ID FROM SALES_TRANSACTION ST WHERE ST.STORE_ID IN (SELECT SM.STORE_ID FROM STORE_MASTER SM WHERE SM.REGION_CODE = '01')\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "05. EXISTS SubQuery (OK)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"sql\": \"SELECT ST.STORE_ID FROM SALES_TRANSACTION ST WHERE EXISTS (SELECT 1 FROM STORE_MASTER SM WHERE SM.STORE_ID = ST.STORE_ID)\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "06. UNION ALL 단일 테이블 각각 (OK)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"sql\": \"SELECT STORE_ID FROM SALES_TRANSACTION UNION ALL SELECT STORE_ID FROM STORE_MASTER\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "07. 허용되지 않은 함수 (FAIL)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"sql\": \"SELECT SYS_CONTEXT('USERENV','SESSION_USER') FROM SALES_TRANSACTION\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "08. Injection OR 1=1 (FAIL)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"sql\": \"SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID = '1' OR '1'='1'\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "09. DROP 시도 (FAIL)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"sql\": \"SELECT STORE_ID FROM SALES_TRANSACTION; DROP TABLE USERS\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/sql/validate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"sql",
+						"validate"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

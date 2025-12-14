@@ -1,0 +1,278 @@
+Secure SQL Oracle Validation Framework
+(MyBatis + JSqlParser 기반 SQL 보안 검증 프레임워크)
+
+1. 개요 (Overview)
+본 프레임워크는 Spring Boot + MyBatis 환경에서 실행되는 모든 SELECT SQL을 대상으로,
+SQL Injection / 권한 우회 / 성능 사고를 사전에 차단하기 위한 AST 기반 SQL 보안 검증 시스템이다.
+
+핵심 목표
+❌ SQL Injection (OR '1'='1', 상수 비교 OR 등) 차단
+
+❌ SELECT *, TABLE.* 금지
+
+❌ 조건 없는 다중 테이블 조회(Cartesian Product) 차단
+
+❌ 허용되지 않은 테이블 / 컬럼 접근 차단
+
+❌ 허용되지 않은 함수 호출 차단
+
+✅ 정상적인 OR 조건, IN 조건, 바인딩 변수 OR 허용
+
+✅ 외부 설정 파일 기반 화이트리스트 Hot Reload 지원
+
+2. 전체 아키텍처 구조
+┌────────────────────┐
+│  MyBatis Executor  │
+└─────────┬──────────┘
+          │
+          ▼
+┌────────────────────────┐
+│ SqlSecurityInterceptor │  ← MyBatis Plugin
+└─────────┬──────────────┘
+          │ SQL String
+          ▼
+┌────────────────────────┐
+│    OracleValidator     │  ← 중앙 검증기
+└─────────┬──────────────┘
+          │
+          ▼
+┌────────────────────────┐
+│ ForbiddenKeywordValidator │  (Raw SQL)
+└─────────┬──────────────┘
+          │
+          ▼
+┌────────────────────────┐
+│   OracleAstParser      │  (JSqlParser)
+└─────────┬──────────────┘
+          │ SqlMeta
+          ▼
+┌────────────────────────┐
+│   ValidatorChain       │
+│  (정책 + 보안 검증)    │
+└─────────┬──────────────┘
+          │
+          ▼
+┌────────────────────────┐
+│ SecureSqlLogger        │
+└────────────────────────┘
+3. 패키지 / 파일 구조
+com.example.demo.securesql
+├── config
+│   └── MyBatisSecurityConfig.java
+│
+├── interceptor
+│   └── SqlSecurityInterceptor.java
+│
+├── log
+│   └── SecureSqlLogger.java
+│
+├── parser
+│   ├── OracleAstParser.java
+│   └── SqlMeta.java
+│
+├── validator
+│   ├── OracleValidator.java
+│   ├── ValidatorChain.java
+│   ├── SqlValidator.java
+│   ├── ForbiddenKeywordValidator.java
+│   ├── JoinPolicyValidator.java
+│   ├── SelectStarValidator.java
+│   ├── PrefixRuleValidator.java
+│   ├── TableColumnWhitelistValidator.java
+│   ├── FunctionWhitelistValidator.java
+│   └── OrPolicyValidator.java
+│
+└── whitelist
+    ├── DynamicTableWhitelistRegistry.java
+    └── GlobalFunctionWhitelistRegistry.java
+4. 설정 파일 구조
+4.1 TableWhitelist.properties
+table=SALES_TRANSACTION
+columns=STORE_ID,PRODUCT_ID,TX_DATE,QTY,UNIT_PRICE,FINAL_AMOUNT
+테이블 단위 화이트리스트
+
+컬럼 단위 접근 통제
+
+외부 ./config/TableWhitelist.properties 존재 시 자동 override
+
+WatchService 기반 Hot Reload 지원
+
+4.2 FunctionWhitelist.properties
+functions=NVL,DECODE,SUM,COUNT,AVG,MAX,MIN,CASE,COALESCE
+SQL 함수 화이트리스트
+
+집계 / 변환 함수만 허용
+
+PL/SQL / 위험 함수 원천 차단
+
+5. MyBatis 연동 방식
+5.1 설정 클래스
+MyBatisSecurityConfig
+
+@Bean
+public SqlSessionFactory sqlSessionFactory(DataSource dataSource)
+SqlSessionFactoryBean.setPlugins() 사용
+
+SqlSecurityInterceptor를 MyBatis Plugin으로 등록
+
+모든 Mapper XML / Interface SQL 자동 적용
+
+5.2 Interceptor 동작
+SqlSecurityInterceptor
+
+대상: Executor.query()
+
+실행 시점: SQL 실행 직전
+
+수행 작업:
+
+BoundSql에서 SQL 문자열 추출
+
+OracleValidator.validate(sql) 호출
+
+실패 시 RuntimeException → SQL 실행 차단
+
+6. Validation 전체 흐름
+SQL 문자열
+   ↓
+ForbiddenKeywordValidator
+   ↓
+OracleAstParser (AST 생성)
+   ↓
+SqlMeta 생성
+   ↓
+ValidatorChain 순차 실행
+   ↓
+PASS / REJECT 로그
+7. ValidatorChain 실행 순서 (중요)
+순서	Validator	목적
+1	JoinPolicyValidator	조건 없는 다중 테이블 차단
+2	SelectStarValidator	SELECT * 금지
+3	PrefixRuleValidator	다중 테이블 컬럼 prefix 강제
+4	TableColumnWhitelistValidator	테이블/컬럼 접근 통제
+5	FunctionWhitelistValidator	함수 화이트리스트
+6	OrPolicyValidator	SQL Injection OR 차단
+⚠️ 순서 변경 금지
+성능 + 보안 이유로 이 순서가 최적화되어 있음
+
+8. JSqlParser AST 구조 이해
+8.1 최상위 구조
+Statement
+ └─ Select
+     └─ SelectBody
+         ├─ PlainSelect
+         │   ├─ SELECT
+         │   ├─ FROM
+         │   ├─ JOIN
+         │   ├─ WHERE
+         │   ├─ GROUP BY
+         │   ├─ HAVING
+         │   └─ ORDER BY
+         │
+         └─ SetOperationList
+             ├─ SelectBody (좌)
+             ├─ SelectBody (우)
+             └─ ORDER BY
+8.2 Expression 트리 예시
+WHERE A = 1 OR B = 2
+OrExpression
+ ├─ BinaryExpression (A = 1)
+ └─ BinaryExpression (B = 2)
+WHERE 1 = 1 OR A = B
+OrExpression
+ ├─ BinaryExpression (1 = 1)  ← unsafe
+ └─ BinaryExpression (A = B)
+→ unsafeOr = true
+
+9. SqlMeta 역할 정리
+필드	설명
+rootTables	최상위 FROM/JOIN 테이블
+tables	서브쿼리 포함 전체 테이블
+rootColumns	SELECT 절 컬럼
+columns	WHERE/JOIN 포함 전체 컬럼
+expressions	함수/표현식
+aliasToTable	alias → table 매핑
+dangerousOr	OR 존재 여부
+unsafeOr	상수 비교 OR 여부
+hasCondition	WHERE / JOIN 조건 존재
+10. OR 정책 상세
+허용
+WHERE STORE_ID = :id OR PRODUCT_ID = :pid
+WHERE COL IN (1,2,3) OR STATUS = :status
+차단
+WHERE 1 = 1
+WHERE A = B OR '1'='1'
+WHERE A IN (1,2,3) OR 1=1
+→ 상수 비교 OR만 차단
+
+11. Forbidden Keyword 1차 방어
+차단 대상 예시:
+
+DROP, TRUNCATE, ALTER, DELETE
+
+EXECUTE IMMEDIATE
+
+UTL_FILE, DBMS_SQL, DBMS_SCHEDULER
+
+문자열 리터럴 제거 후 검사하여 오탐 방지.
+
+12. 로그 정책
+SecureSqlLogger
+
+[SECURE-SQL][PASS]
+[SECURE-SQL][REJECT]
+[SECURE-SQL][META]
+PASS / REJECT SQL 명확히 구분
+
+파싱된 테이블/컬럼 메타 정보 기록
+
+보안 사고 추적 가능
+
+13. 세팅 방법 요약
+1️⃣ 의존성
+implementation 'com.github.jsqlparser:jsqlparser:4.6'
+2️⃣ 설정 클래스 등록
+@Configuration
+public class MyBatisSecurityConfig
+3️⃣ 화이트리스트 파일 준비
+resources/
+ ├─ TableWhitelist.properties
+ └─ FunctionWhitelist.properties
+4️⃣ 실행
+기존 MyBatis 코드 수정 ❌
+
+자동 적용 ✅
+
+14. 사용 방법 (개발자 관점)
+mapper.selectSomething(params);
+➡ 자동 검증됨
+➡ 실패 시 RuntimeException 발생
+➡ SQL 미실행
+
+15. 설계 철학 요약
+❌ 문자열 기반 정규식 검증 → 취약
+
+✅ AST 기반 구조 검증 → 안전
+
+❌ 단순 블랙리스트 → 우회 가능
+
+✅ 화이트리스트 + 정책 체인 → 통제 가능
+
+❌ DB 의존 보안 → 사후 대응
+
+✅ 애플리케이션 레벨 선제 차단
+
+16. 확장 포인트
+UPDATE / DELETE 지원
+
+테넌트 컬럼 강제 조건
+
+Role 기반 Table 접근 정책
+
+SELECT 컬럼 수 제한
+
+실행 계획 비용 제한
+
+17. 결론
+이 구조는 실무에서 바로 써도 되는 수준의 SQL 보안 프레임워크이며,
+특히 Oracle + MyBatis 환경에서 가장 안전한 접근 방식이다.
