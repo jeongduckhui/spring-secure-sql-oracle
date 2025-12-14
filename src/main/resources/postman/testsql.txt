@@ -1,0 +1,262 @@
+
+1. 단일 테이블 기본 조회
+SELECT STORE_ID, PRODUCT_ID FROM SALES_TRANSACTION
+{
+  "sql": "SELECT STORE_ID, PRODUCT_ID FROM SALES_TRANSACTION"
+}
+
+2. 단일 테이블 + 함수
+SELECT NVL(STORE_ID, 'X') FROM SALES_TRANSACTION
+{
+  "sql": "SELECT NVL(STORE_ID, 'X') FROM SALES_TRANSACTION"
+}
+
+3. 단일 테이블 + CASE
+SELECT CASE WHEN QTY > 0 THEN 'Y' ELSE 'N' END FROM SALES_TRANSACTION
+{
+  "sql": "SELECT CASE WHEN QTY > 0 THEN 'Y' ELSE 'N' END FROM SALES_TRANSACTION"
+}
+
+4. JOIN + prefix 사용
+SELECT ST.STORE_ID, SM.STORE_NAME FROM SALES_TRANSACTION ST JOIN STORE_MASTER SM ON ST.STORE_ID = SM.STORE_ID
+{
+  "sql": "SELECT ST.STORE_ID, SM.STORE_NAME FROM SALES_TRANSACTION ST JOIN STORE_MASTER SM ON ST.STORE_ID = SM.STORE_ID"
+}
+
+5. JOIN + 함수
+SELECT SUM(ST.QTY) FROM SALES_TRANSACTION ST JOIN STORE_MASTER SM ON ST.STORE_ID = SM.STORE_ID
+{
+  "sql": "SELECT SUM(ST.QTY) FROM SALES_TRANSACTION ST JOIN STORE_MASTER SM ON ST.STORE_ID = SM.STORE_ID"
+}
+
+6. WHERE + BETWEEN
+SELECT ST.STORE_ID FROM SALES_TRANSACTION ST WHERE ST.TX_DATE BETWEEN '20240101' AND '20240131'
+{
+  "sql": "SELECT ST.STORE_ID FROM SALES_TRANSACTION ST WHERE ST.TX_DATE BETWEEN '20240101' AND '20240131'"
+}
+
+7. IN (값 목록)
+SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID IN ('A','B')
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID IN ('A','B')"
+}
+
+8. IN (서브쿼리)
+SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID IN (SELECT STORE_ID FROM STORE_MASTER)
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID IN (SELECT STORE_ID FROM STORE_MASTER)"
+}
+
+9. EXISTS
+SELECT STORE_ID FROM SALES_TRANSACTION ST WHERE EXISTS (SELECT 1 FROM STORE_MASTER SM WHERE ST.STORE_ID = SM.STORE_ID)
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION ST WHERE EXISTS (SELECT 1 FROM STORE_MASTER SM WHERE ST.STORE_ID = SM.STORE_ID)"
+}
+
+10. UNION ALL
+SELECT STORE_ID FROM SALES_TRANSACTION UNION ALL SELECT STORE_ID FROM STORE_MASTER
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION UNION ALL SELECT STORE_ID FROM STORE_MASTER"
+}
+
+
+❌ 차단 (INVALID)
+
+11. 다중 테이블 prefix 누락
+SELECT STORE_ID, STORE_NAME FROM SALES_TRANSACTION ST JOIN STORE_MASTER SM ON ST.STORE_ID = SM.STORE_ID
+{
+  "sql": "SELECT STORE_ID, STORE_NAME FROM SALES_TRANSACTION ST JOIN STORE_MASTER SM ON ST.STORE_ID = SM.STORE_ID"
+}
+
+❌ 이유: 다중 테이블에서 prefix 없는 컬럼
+
+12. 허용되지 않은 함수
+SELECT HACKFUNC(STORE_ID) FROM SALES_TRANSACTION
+{
+  "sql": "SELECT HACKFUNC(STORE_ID) FROM SALES_TRANSACTION"
+}
+
+13. DROP 포함
+SELECT STORE_ID FROM SALES_TRANSACTION; DROP TABLE USERS
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION; DROP TABLE USERS"
+}
+
+14. EXECUTE IMMEDIATE
+SELECT EXECUTE IMMEDIATE 'DROP TABLE X' FROM DUAL
+{
+  "sql": "SELECT EXECUTE IMMEDIATE 'DROP TABLE X' FROM DUAL"
+}
+
+15. UTL_FILE
+SELECT UTL_FILE.FOPEN('X','Y','R') FROM DUAL
+{
+  "sql": "SELECT UTL_FILE.FOPEN('X','Y','R') FROM DUAL"
+}
+
+16. whitelist 미등록 테이블
+SELECT * FROM UNKNOWN_TABLE
+{
+  "sql": "SELECT * FROM UNKNOWN_TABLE"
+}
+
+17. alias 없는 prefix
+SELECT A.STORE_ID FROM SALES_TRANSACTION
+{
+  "sql": "SELECT A.STORE_ID FROM SALES_TRANSACTION"
+}
+
+18. 다중 테이블에서 prefix 없는 컬럼
+SELECT STORE_ID FROM SALES_TRANSACTION ST, STORE_MASTER SM
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION ST, STORE_MASTER SM"
+}
+
+19. 허용되지 않은 집계 함수
+SELECT MEDIAN(QTY) FROM SALES_TRANSACTION
+{
+  "sql": "SELECT MEDIAN(QTY) FROM SALES_TRANSACTION"
+}
+
+20. DBMS_SQL
+SELECT DBMS_SQL.PARSE('X') FROM DUAL
+{
+  "sql": "SELECT DBMS_SQL.PARSE('X') FROM DUAL"
+}
+
+21. whitelist * SELECT
+SELECT * FROM SALES_TRANSACTION
+{
+  "sql": "SELECT * FROM SALES_TRANSACTION"
+}
+
+22. JOIN + WHERE X
+SELECT A.STORE_ID FROM SALES_TRANSACTION A, STORE_MASTER B
+{
+  "sql": "SELECT A.STORE_ID FROM SALES_TRANSACTION A, STORE_MASTER B"
+}
+
+✅ 1️⃣ 성공 케이스 (VALID 처리되어야 함)
+① 단순 SELECT (단일 테이블, 컬럼 명시)
+{
+  "sql": "SELECT STORE_ID, PRODUCT_ID FROM SALES_TRANSACTION"
+}
+② 바인딩 변수 OR (허용된 OR)
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID = :storeId OR PRODUCT_ID = :productId"
+}
+③ 컬럼 대 컬럼 OR (허용)
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID = PRODUCT_ID OR QTY = UNIT_PRICE"
+}
+④ EXISTS + 안전한 서브쿼리
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION ST WHERE EXISTS (SELECT 1 FROM STORE_MASTER SM WHERE SM.STORE_ID = ST.STORE_ID)"
+}
+⑤ IN (:list) — 핵심 테스트
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID IN (:storeIdList)"
+}
+⑥ IN (?) — 단일 바인딩
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID IN (?)"
+}
+⑦ IN (서브쿼리)
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID IN (SELECT STORE_ID FROM STORE_MASTER)"
+}
+❌ 2️⃣ 실패 케이스 (차단되어야 함)
+🔥 금지 키워드 (Parser 이전 단계)
+⑧ 세미콜론 + DROP
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION; DROP TABLE USERS"
+}
+🔥 SELECT * 정책
+⑨ SELECT *
+{
+  "sql": "SELECT * FROM SALES_TRANSACTION"
+}
+⑩ SELECT T.*
+{
+  "sql": "SELECT ST.* FROM SALES_TRANSACTION ST"
+}
+🔥 OR Injection
+⑪ 상수 OR Injection
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID = STORE_ID OR '1'='1'"
+}
+⑫ OR + 상수 비교
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID = 1 OR 1=1"
+}
+🔥 EXISTS + Injection
+⑬ EXISTS 내부 OR Injection
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION WHERE EXISTS (SELECT 1 FROM SALES_TRANSACTION WHERE '1'='1')"
+}
+🔥 IN (:list) 정책 위반
+⑭ IN (상수 리스트)
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID IN (1,2,3)"
+}
+⑮ IN (문자 리터럴 리스트)
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID IN ('A','B')"
+}
+⑯ IN (혼합)
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID IN (1, :id)"
+}
+🔥 Prefix 규칙 위반
+⑰ 다중 테이블 + prefix 없는 컬럼
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION ST JOIN STORE_MASTER SM ON ST.STORE_ID = SM.STORE_ID"
+}
+🔥 Cartesian Product 차단
+⑱ 다중 테이블 + 조건 없음
+{
+  "sql": "SELECT ST.STORE_ID FROM SALES_TRANSACTION ST, STORE_MASTER SM"
+}
+
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID IN (1,2,3) OR 1=1"
+}
+기대 결과
+{
+  "ok": false,
+  "message": "OR 조건에 상수 비교 또는 조건 무력화 패턴이 포함되어 있습니다"
+}
+
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID IN ('A','B') OR '1'='1'"
+}
+
+기대 결과
+{
+    "ok": false,
+    "message": "OR 조건에 상수 비교 또는 조건 무력화 패턴이 포함되어 있습니다",
+    "sql": "SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID IN ('A','B') OR '1'='1'"
+}
+
+{
+  "sql": "SELECT STORE_ID FROM SALES_TRANSACTION WHERE STORE_ID IN (1,2,3) OR STORE_ID = STORE_ID"
+}
+
+기대 결과
+valid
+
+{
+"sql": "SELECT c.customer_id, c.company_name, c.sales_rep_id, SUM(i.amount) AS total_ltv, COUNT(CASE WHEN i.status = 'overdue' THEN 1 END) AS overdue_count, AVG(CASE WHEN i.paid_at IS NOT NULL THEN EXTRACT(DAY FROM (i.paid_at - i.created_at)) ELSE NULL END) AS avg_payment_delay_days, NTILE(5) OVER (ORDER BY SUM(i.amount) DESC) AS revenue_tier FROM customers c INNER JOIN subscriptions s ON c.customer_id = s.customer_id LEFT JOIN invoices i ON s.subscription_id = i.subscription_id WHERE i.created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '12 months') GROUP BY c.customer_id, c.company_name, c.sales_rep_id"
+}
+
+{
+"sql": "SELECT customer_id, usage_month, monthly_active_users, LAG(monthly_active_users, 1) OVER (PARTITION BY customer_id ORDER BY usage_month) AS prev_month_users, ROUND((monthly_active_users - LAG(monthly_active_users, 1) OVER (PARTITION BY customer_id ORDER BY usage_month))::NUMERIC / NULLIF(LAG(monthly_active_users, 1) OVER (PARTITION BY customer_id ORDER BY usage_month), 0) * 100, 2) AS growth_rate FROM (SELECT customer_id, DATE_TRUNC('month', log_date) AS usage_month, COUNT(DISTINCT user_id) AS monthly_active_users FROM usage_logs WHERE log_date >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '6 months') GROUP BY customer_id, DATE_TRUNC('month', log_date)) raw_usage"
+}
+
+{
+"sql": "SELECT customer_id, COUNT(*) AS negative_trend_months, MIN(growth_rate) AS max_drop_rate FROM MonthlyUsageStats WHERE growth_rate < -15.0 AND usage_month >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '3 months') GROUP BY customer_id"
+}
+
+{
+"sql": "SELECT r.region_name, sr.rep_name, cf.revenue_tier AS customer_tier, COUNT(cf.customer_id) AS total_managed_customers, SUM(CASE WHEN (cs.negative_trend_months >= 2 OR cf.overdue_count > 0) AND cf.revenue_tier = 1 THEN 1 ELSE 0 END) AS high_risk_vip_count, ROUND(AVG(COALESCE(cs.negative_trend_months * 10, 0) + (cf.overdue_count * 5) + (CASE WHEN cf.avg_payment_delay_days > 7 THEN 20 ELSE 0 END)), 1) AS avg_risk_score, TO_CHAR(SUM(cf.total_ltv), 'FM999,999,999,999') AS portfolio_value FROM CustomerFinancials cf JOIN sales_reps sr ON cf.sales_rep_id = sr.rep_id JOIN regions r ON sr.region_id = r.region_id LEFT JOIN ChurnSignals cs ON cf.customer_id = cs.customer_id WHERE sr.team_id IN (SELECT team_id FROM sales_reps GROUP BY team_id HAVING SUM(quota_attainment) / COUNT(*) > 0.8) GROUP BY r.region_name, sr.rep_name, cf.revenue_tier HAVING SUM(cf.total_ltv) > 10000 ORDER BY avg_risk_score DESC, portfolio_value DESC"
+}
