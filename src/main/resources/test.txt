@@ -18,3 +18,159 @@ axios.post("/api/report/sales", {
     "dir": "ASC"
   }
 }
+
+======================================================================
+
+axios.post('/api/report/enterprise-risk', {
+  columns: [
+    "ENTERPRISE_NAME",
+    "INDUSTRY_CODE",
+    "TOTAL_REVENUE",
+    "AVG_ACTIVE_USERS",
+    "TOTAL_API_CALLS"
+  ],
+  enterpriseIds: [1, 2],
+  orderBy: {
+    key: "TOTAL_REVENUE",
+    dir: "DESC"
+  }
+})
+
+------------------------------
+
+{
+  "columns": [
+    "ENTERPRISE_NAME",
+    "INDUSTRY_CODE",
+    "TOTAL_REVENUE",
+    "AVG_ACTIVE_USERS",
+    "TOTAL_API_CALLS"
+  ],
+  "enterpriseIds": [1, 2],
+  "orderBy": {
+    "key": "TOTAL_REVENUE",
+    "dir": "DESC"
+  }
+}
+
+-----------------------------------
+
+{
+  "columns": [
+    "ENTERPRISE_NAME",
+    "TOTAL_REVENUE",
+    "AVG_ACTIVE_USERS"
+  ],
+  "enterpriseIds": [1],
+  "orderBy": {
+    "key": "TOTAL_REVENUE",
+    "dir": "DESC"
+  }
+}
+
+=============================================
+
+import axios from "axios";
+
+axios.post(
+  "/api/report/subquery/enterprise-risk",
+  {
+    columns: [
+      "ENTERPRISE_NAME",
+      "INDUSTRY_CODE",
+      "TOTAL_REVENUE",
+      "AVG_ACTIVE_USERS",
+      "TOTAL_API_CALLS"
+    ],
+    enterpriseIds: [1, 2],
+    orderBy: {
+      key: "TOTAL_REVENUE",
+      dir: "DESC"
+    }
+  },
+  {
+    headers: {
+      "X-ROLE": "USER"
+    }
+  }
+)
+.then(res => {
+  console.log("SUBQUERY RESULT:", res.data);
+})
+.catch(err => {
+  console.error("SUBQUERY ERROR:", err.response?.data || err);
+});
+
+----------------------------------------
+
+http://localhost:8080/api/report/subquery/enterprise-risk
+http://localhost:8080/api/report/simple/subquery/enterprise-risk
+
+{
+  "columns": [
+    "ENTERPRISE_NAME",
+    "INDUSTRY_CODE",
+    "TOTAL_REVENUE",
+    "AVG_ACTIVE_USERS",
+    "TOTAL_API_CALLS"
+  ],
+  "enterpriseIds": "1,2",
+  "orderBy": {
+    "key": "TOTAL_REVENUE",
+    "dir": "DESC"
+  }
+}
+
+=====================================================
+
+import axios from "axios";
+
+axios.post(
+  "/api/report/cte/enterprise-risk",
+  {
+    columns: [
+      "ENTERPRISE_NAME",
+      "INDUSTRY_CODE",
+      "TOTAL_REVENUE",
+      "AVG_ACTIVE_USERS",
+      "TOTAL_API_CALLS"
+    ],
+    enterpriseIds: "1,2",
+    orderBy: {
+      key: "AVG_ACTIVE_USERS",
+      dir: "DESC"
+    }
+  },
+  {
+    headers: {
+      "X-ROLE": "ADMIN"
+    }
+  }
+)
+.then(res => {
+  console.log("CTE RESULT:", res.data);
+})
+.catch(err => {
+  console.error("CTE ERROR:", err.response?.data || err);
+});
+
+------------------------------------------------------
+
+http://localhost:8080/api/report/cte/enterprise-risk
+http://localhost:8080/api/report/simple/cte/enterprise-risk
+
+{
+  "columns": [
+    "ENTERPRISE_NAME",
+    "INDUSTRY_CODE",
+    "TOTAL_REVENUE",
+    "AVG_ACTIVE_USERS",
+    "TOTAL_API_CALLS"
+  ],
+  "enterpriseIds": "1,2",
+  "orderBy": {
+    "key": "AVG_ACTIVE_USERS",
+    "dir": "DESC"
+  }
+}
+

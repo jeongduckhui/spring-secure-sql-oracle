@@ -26,3 +26,34 @@ CREATE TABLE ChurnSignals (
     customer_id NUMBER,
     negative_trend_months NUMBER
 );
+
+DROP TABLE IF EXISTS ENTERPRISES;
+DROP TABLE IF EXISTS SUBSCRIPTIONS;
+DROP TABLE IF EXISTS INVOICES;
+DROP TABLE IF EXISTS USAGE_LOGS;
+
+CREATE TABLE ENTERPRISES (
+    enterprise_id   BIGINT PRIMARY KEY,
+    enterprise_name VARCHAR(100),
+    industry_code   VARCHAR(50)
+);
+
+CREATE TABLE SUBSCRIPTIONS (
+    subscription_id BIGINT PRIMARY KEY,
+    enterprise_id   BIGINT NOT NULL
+);
+
+CREATE TABLE INVOICES (
+    invoice_id      BIGINT PRIMARY KEY,
+    subscription_id BIGINT NOT NULL,
+    amount          DECIMAL(15,2)
+);
+
+CREATE TABLE USAGE_LOGS (
+    log_id          BIGINT PRIMARY KEY,
+    subscription_id BIGINT NOT NULL,
+    active_users    INT,
+    api_calls       BIGINT
+);
+
+

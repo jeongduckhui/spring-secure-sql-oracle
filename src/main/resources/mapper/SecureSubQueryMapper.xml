@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.report.secure.subquery.SecureSubQueryMapper">
+
+    <select id="selectEnterpriseRisk" resultType="map">
+        SELECT
+            ${selectColumns}
+        FROM (
+            SELECT s.subscription_id, e.enterprise_name, e.industry_code
+            FROM ENTERPRISES e
+            JOIN SUBSCRIPTIONS s ON e.enterprise_id = s.enterprise_id
+            WHERE e.enterprise_id IN (${enterpriseIds})
+        ) b
+        JOIN (
+            SELECT subscription_id, SUM(amount) AS total_revenue
+            FROM INVOICES
+            GROUP BY subscription_id
+        ) ia ON b.subscription_id = ia.subscription_id
+        JOIN (
+            SELECT subscription_id,
+                   AVG(active_users) AS avg_active_users,
+                   SUM(api_calls) AS total_api_calls
+            FROM USAGE_LOGS
+            GROUP BY subscription_id
+        ) ua ON b.subscription_id = ua.subscription_id
+        ${orderByClause}
+    </select>
+
+</mapper>
