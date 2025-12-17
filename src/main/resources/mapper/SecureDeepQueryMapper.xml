@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.demo.report.secure.deepquery.SecureDeepQueryMapper">
+
+
+	<select id="execute__" resultType="map">
+	
+		WITH BASE_ENTERPRISE AS (
+		    SELECT
+		        e.enterprise_id,
+		        e.enterprise_name,
+		        e.industry_code
+		    FROM ENTERPRISES e
+		    WHERE e.enterprise_id IN
+		    <foreach collection="enterpriseIds" item="id" open="(" close=")" separator=",">
+		        #{id}
+		    </foreach>
+		),
+		REVENUE_CTE AS (
+		    SELECT
+		        s.subscription_id,
+		        SUM(i.amount) AS total_revenue
+		    FROM SUBSCRIPTIONS s
+		    JOIN INVOICES i ON s.subscription_id = i.subscription_id
+		    GROUP BY s.subscription_id
+		)
+		
+		SELECT
+		    ${selectColumns}
+		FROM (
+		    SELECT *
+		    FROM (
+		        SELECT
+		            b.enterprise_id,
+		            b.enterprise_name,
+		            b.industry_code,
+		            r.subscription_id,
+		            r.total_revenue
+		        FROM BASE_ENTERPRISE b
+		        JOIN SUBSCRIPTIONS s ON b.enterprise_id = s.enterprise_id
+		        JOIN REVENUE_CTE r ON s.subscription_id = r.subscription_id
+		        <!-- ❌ WHERE 1=1 제거 -->
+		    ) L1
+		
+		    UNION ALL
+		
+		    SELECT *
+		    FROM (
+		        SELECT
+		            b.enterprise_id,
+		            b.enterprise_name,
+		            b.industry_code,
+		            r.subscription_id,
+		            r.total_revenue
+		        FROM BASE_ENTERPRISE b
+		        JOIN SUBSCRIPTIONS s ON b.enterprise_id = s.enterprise_id
+		        JOIN REVENUE_CTE r ON s.subscription_id = r.subscription_id
+		        WHERE r.total_revenue <![CDATA[>=]]> #{minRevenue}
+		    ) L2
+		) FINAL
+		GROUP BY ${groupByColumns}
+		ORDER BY ${orderByColumns}
+	
+	</select>
+
+	<select id="execute" resultType="map">
+	
+		WITH BASE_ENTERPRISE AS (
+		    SELECT
+		        e.enterprise_id,
+		        e.enterprise_name,
+		        e.industry_code
+		    FROM ENTERPRISES e
+		    WHERE e.enterprise_id IN
+		    <foreach collection="enterpriseIds" item="id" open="(" close=")" separator=",">
+		        #{id}
+		    </foreach>
+		),
+		REVENUE_CTE AS (
+		    SELECT
+		        s.subscription_id,
+		        SUM(i.amount) AS total_revenue
+		    FROM SUBSCRIPTIONS s
+		    JOIN INVOICES i ON s.subscription_id = i.subscription_id
+		    GROUP BY s.subscription_id
+		)
+		
+		SELECT
+		    ${selectColumns}
+		FROM (
+		    SELECT *
+		    FROM (
+		        SELECT
+		            b.enterprise_id,
+		            b.enterprise_name,
+		            b.industry_code,
+		            r.subscription_id,
+		            r.total_revenue
+		        FROM BASE_ENTERPRISE b
+		        JOIN SUBSCRIPTIONS s ON b.enterprise_id = s.enterprise_id
+		        JOIN REVENUE_CTE r ON s.subscription_id = r.subscription_id
+		        WHERE 1=1
+		    ) L1
+		
+		    UNION ALL
+		
+		    SELECT *
+		    FROM (
+		        SELECT
+		            b.enterprise_id,
+		            b.enterprise_name,
+		            b.industry_code,
+		            r.subscription_id,
+		            r.total_revenue
+		        FROM BASE_ENTERPRISE b
+		        JOIN SUBSCRIPTIONS s ON b.enterprise_id = s.enterprise_id
+		        JOIN REVENUE_CTE r ON s.subscription_id = r.subscription_id
+		        WHERE r.total_revenue <![CDATA[>=]]> #{minRevenue}
+		    ) L2
+		) FINAL
+		GROUP BY ${groupByColumns}
+		ORDER BY ${orderByColumns}
+	
+	</select>
+</mapper>

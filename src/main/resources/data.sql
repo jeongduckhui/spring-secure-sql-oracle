@@ -52,23 +52,31 @@ INSERT INTO ChurnSignals VALUES (1013, 0);
 
 INSERT INTO ENTERPRISES VALUES
 (1, 'Alpha Corp', 'IT'),
-(2, 'Beta Finance', 'FIN');
+(2, 'Beta Finance', 'FIN'),
+(3, 'Gamma Retail', 'RETAIL');
 
 INSERT INTO SUBSCRIPTIONS VALUES
 (100, 1),
 (101, 1),
-(200, 2);
+(200, 2),
+(300, 3),
+(301, 3);
 
 INSERT INTO INVOICES VALUES
 (1, 100, 50000),
 (2, 100, 70000),
 (3, 101, 30000),
-(4, 200, 90000);
+(4, 200, 90000),
+(10, 300, 20000),
+(11, 300, 30000),
+(12, 301, 50000);
 
 INSERT INTO USAGE_LOGS VALUES
 (1, 100, 120, 10000),
 (2, 100, 130, 12000),
 (3, 101, 80, 6000),
-(4, 200, 200, 25000);
+(4, 200, 200, 25000),
+(10, 300, 60, 4000),
+(11, 301, 70, 4500);
 
 

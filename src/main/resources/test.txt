@@ -174,3 +174,38 @@ http://localhost:8080/api/report/simple/cte/enterprise-risk
   }
 }
 
+===============================================================
+
+http://localhost:8080/api/report/secure/deepquery/execute
+
+
+{
+  "selectColumns": [
+    "ENTERPRISE_ID",
+    "ENTERPRISE_NAME",
+    "INDUSTRY_CODE",
+    "BILLING_MONTH",
+    "TOTAL_REVENUE",
+    "AVG_USERS",
+    "TOTAL_API_CALLS"
+  ],
+  "groupByColumns": [
+    "ENTERPRISE_ID",
+    "ENTERPRISE_NAME",
+    "INDUSTRY_CODE",
+    "BILLING_MONTH"
+  ],
+  "orderByColumns": [
+    "TOTAL_REVENUE"
+  ],
+  "orderByDir": "DESC",
+  "inConditionColumns": [
+    "ENTERPRISE_ID"
+  ],
+  "enterpriseIds": [1, 2, 3],
+  "fromDate": "202401",
+  "toDate": "202412",
+  "minRevenue": 100000
+}
+
+

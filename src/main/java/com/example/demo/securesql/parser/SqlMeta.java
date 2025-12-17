@@ -41,6 +41,9 @@ public class SqlMeta {
 	 * 			- 인덱스 효율 분석: 사용된 모든 칼럼을 기반으로 데이터베이스 관리자가 성능 문제를 일으키는 칼럼(예: 인덱스 없는 WHERE 절 칼럼)을 식별하는 데 도움을 줌
 	 */
 
+    /* =========================
+       테이블 / 컬럼 / 표현식 정보
+       ========================= */
 	// [테이블] FROM 절의 최상위/직접 테이블 목록 (서브쿼리 내부 테이블 제외)
     private final Set<String> rootTables = new HashSet<>();
     // [테이블] 쿼리 전체(서브쿼리 포함)에 사용된 모든 테이블 목록
@@ -54,12 +57,20 @@ public class SqlMeta {
     // [별칭] 별칭(Alias)과 실제 테이블 이름의 매핑 (예: "C" -> "CUSTOMERS")
     private final Map<String, String> aliasToTable = new HashMap<>();
 
+    /* =========================
+       보안 / 조건 플래그
+       ========================= */
     // [보안] OR 연산자 존재 여부 (일반적인 위험 마킹)
-    private boolean dangerousOr = false;   
+    private boolean dangerousOr = false;
     // [보안] OR 연산자 중 Injection 위험이 있는 패턴 존재 여부 (예: '1'='1' 같은 상수 비교)
-    private boolean unsafeOr = false;      
+    private boolean unsafeOr = false;
     // [조건] WHERE, JOIN ON, HAVING 등 조건절 존재 여부
     private boolean hasCondition = false;
+
+    // [조건] WHERE 1=1 (숫자 상수 TRUE) 정상 통과
+    private boolean constantTrueInWhere = false;
+    // [조건] JOIN ON 상수 비교 (ON 1=1, ON '1'='1') 차단
+    private boolean constantComparisonInJoin = false;
 
     /* =========================
        adders (Parser 전용)
@@ -87,6 +98,11 @@ public class SqlMeta {
     // 조건절 (WHERE, JOIN ON, HAVING 등) 발견 시 호출되어 플래그 설정
     public void markCondition() { hasCondition = true; }
 
+    // WHERE 1=1 (숫자 상수 TRUE) 플래그 설정
+    public void markConstantTrueInWhere() { constantTrueInWhere = true; }
+    // JOIN ON 상수 비교 (ON 1=1, ON '1'='1') 플래그 설정
+    public void markConstantComparisonInJoin() { constantComparisonInJoin = true; }
+
     /* =========================
        getters (Validator 전용)
        ========================= */
@@ -109,4 +125,9 @@ public class SqlMeta {
     public boolean hasUnsafeOrPredicate() { return unsafeOr; }
     // 조건절 존재 여부 반환 (특정 권한 없는 사용자의 필터링 없는 전수 조회 차단 등에 사용될 수 있음)
     public boolean hasJoinOrWhereCondition() { return hasCondition; }
+
+    // WHERE 1=1 (숫자 상수 TRUE) 패턴 존재 여부 반환
+    public boolean hasConstantTrueInWhere() { return constantTrueInWhere; }
+    // JOIN ON 상수 비교 (ON 1=1, ON '1'='1') 패턴 존재 여부 반환
+    public boolean hasConstantComparisonInJoin() { return constantComparisonInJoin; }
 }

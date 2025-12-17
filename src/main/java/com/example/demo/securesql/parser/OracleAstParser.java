@@ -62,7 +62,7 @@ public class OracleAstParser {
 
             // SELECT 문의 본문(SelectBody) 처리 시작 (PlainSelect 또는 SetOperationList)
             handleSelectBody(select.getSelectBody(), metas);
-
+            
             // 수집된 메타 정보 리스트 반환
             return metas;
 
@@ -94,7 +94,7 @@ public class OracleAstParser {
      */
     /** SelectBody 처리 **/
     private void handleSelectBody(SelectBody body, List<SqlMeta> metas) {
-    	
+
     	// SelectBody가 일반적인 SELECT 구문(PlainSelect)인 경우 처리
         if (body instanceof PlainSelect) {
             handlePlainSelect((PlainSelect) body, metas);
@@ -106,7 +106,7 @@ public class OracleAstParser {
             for (SelectBody sb : sol.getSelects()) {
                 handleSelectBody(sb, metas);
             }
-            
+
             // ORDER BY는 개별 SQL에 대한 정렬, 최종 결과 집합에 대한 정렬 
             // 표현식 수집 위치가 2곳임
             
@@ -120,7 +120,7 @@ public class OracleAstParser {
              *  아래 ORDER BY Expresstion 수집 로직은 위 예시 쿼리에 있는 
              *  ORDER BY 절처럼 UNION, INTERSECT 등 집합 연산의 최종 결과 집합에 대한 정렬을 의미
              */
-            // UNION 전체 ORDER BY 처리 (JSqlParser 4.6)
+            // UNION 전체 ORDER BY 처리
             if (sol.getOrderByElements() != null) {
                 for (SqlMeta meta : metas) {
                     for (OrderByElement obe : sol.getOrderByElements()) {
@@ -130,10 +130,9 @@ public class OracleAstParser {
                     }
                 }
             }
-            
         }
     }
-    
+
     /*
      * [ AllColumns vs. AllTableColumns 차이점 비교 ]
      * 
@@ -187,7 +186,7 @@ public class OracleAstParser {
                 }
             }
         }
-        
+
         /*
          * JSqlParser 4.6의 AST 구조
          * 	- GROUP BY, HAVING, ORDER BY 절이 SELECT 하위에 있는게 아니라 PlainSelect, SetOperationList 하위에 있음
@@ -226,8 +225,14 @@ public class OracleAstParser {
                 if (onExprs != null && !onExprs.isEmpty()) {
                 	// 조건이 있음을 마킹
                     meta.markCondition();
+
                     // ON 조건 Expression 수집
                     for (Expression on : onExprs) {
+                        if (isConstantComparison(on)) {
+                        	// WHERE 1=1 (숫자 상수 TRUE) 가능
+                        	// JOIN ON 상수 비교 (ON 1=1, ON '1'='1') 차단
+                            meta.markConstantComparisonInJoin(); 
+                        }
                         collectExpr(on, meta);
                     }
                 }
@@ -239,7 +244,7 @@ public class OracleAstParser {
         if (ps.getWhere() != null) {
         	// 조건이 있음을 마킹
             meta.markCondition();
-            // WHERE 조건 Expression 수집
+         // WHERE 조건 Expression 수집
             collectExpr(ps.getWhere(), meta);
         }
 
@@ -258,7 +263,7 @@ public class OracleAstParser {
         	// HAVING 조건 Expression 수집
             collectExpr(ps.getHaving(), meta);
         }
-        
+
         /*
          * SELECT col1 FROM tableA ORDER BY 1
          * 
@@ -275,7 +280,7 @@ public class OracleAstParser {
             }
         }
     }
-    
+
     /*
      * - net.sf.jsqlparser.statement.select.FromItem
      * 		- SQL SELECT 쿼리에서 데이터의 출처(Source)를 나타내는 추상 클래스
@@ -307,23 +312,21 @@ public class OracleAstParser {
     	// FROM Item이 일반 테이블(Table)인 경우
         if (item instanceof Table) {
             Table t = (Table) item;
-
-            String tableName = t.getName();
             // 루트 테이블 목록에 추가 (최상위 FROM에 위치한 테이블)
-            parentMeta.addRootTable(tableName);
+            parentMeta.addRootTable(t.getName());
             // 전체 테이블 목록에 추가
-            parentMeta.addTable(tableName);
+            parentMeta.addTable(t.getName());
 
             // 테이블에 별칭(Alias)이 있는 경우 별칭 정보 추가
             if (t.getAlias() != null) {
-                parentMeta.addAlias(t.getAlias().getName(), tableName);
+                parentMeta.addAlias(t.getAlias().getName(), t.getName());
             }
 
         } 
         // FROM Item이 서브쿼리(SubSelect)인 경우
         else if (item instanceof SubSelect) {
             SubSelect ss = (SubSelect) item;
-
+            
             // 테이블 이름 대신 특수 마커 "__SUBQUERY__" 추가
             parentMeta.addTable("__SUBQUERY__");
 
@@ -355,10 +358,9 @@ public class OracleAstParser {
         // Expression이 괄호(Parenthesis)로 묶여 있는 경우: 괄호 내부의 Expression을 재귀적으로 처리
         if (expr instanceof Parenthesis) {
             collectExpr(((Parenthesis) expr).getExpression(), meta);
-            
             return;
         }
-        
+
         /*
          * SQL에서 OR 연산자는 두 개의 불리언(Boolean) 표현식을 연결하여, 
          * 두 표현식 중 하나라도 참(True)이면 전체가 참이 되도록 만듦
@@ -402,7 +404,7 @@ public class OracleAstParser {
         // Expression이 서브쿼리(SubSelect)인 경우 (IN, EXISTS 등 내부)
         if (expr instanceof SubSelect) {
             SubSelect ss = (SubSelect) expr;
-
+            
             List<SqlMeta> subMetas = new ArrayList<>();
             // 서브쿼리 본문 처리
             handleSelectBody(ss.getSelectBody(), subMetas);
@@ -417,9 +419,16 @@ public class OracleAstParser {
             return;
         }
 
-        // OR 밖에서도 상수 비교는 unsafe로 마킹 (SQL Injection 공격: EX. `WHERE '1'='1'`)
+        // OR 밖 상수 비교 처리
         if (isConstantComparison(expr)) {
-            meta.markUnsafeOr();
+        	// WHERE 1=1 허용
+            if (isNumericOneEqualsOne(expr)) {
+                meta.markConstantTrueInWhere(); 
+            } 
+            // '1'='1' 등 on 뒤에 상수 비교는 차단
+            else {
+                meta.markUnsafeOr(); 
+            }
         }
 
         // Expression이 칼럼(Column)인 경우: 칼럼 목록에 추가
@@ -434,6 +443,7 @@ public class OracleAstParser {
             Function f = (Function) expr;
             // 함수 이름 목록에 추가
             meta.addExpression(f.getName());
+
             // 함수의 인자(Parameters)를 재귀적으로 처리
             if (f.getParameters() != null && f.getParameters().getExpressions() != null) {
                 for (Expression p : f.getParameters().getExpressions()) {
@@ -443,6 +453,7 @@ public class OracleAstParser {
             
             return;
         }
+
         /*
          * IN 연산자는 아래와 같은 형태이기 때문에 우항은 이미 다른 수집로직에서 처리되었거나 무시되었음.
          * 따라서 좌항만 수집함
@@ -451,8 +462,7 @@ public class OracleAstParser {
          */
         // Expression이 IN 연산자인 경우: 좌항만 수집 (우항은 리터럴 리스트 또는 SubSelect로 이미 처리됨)
         if (expr instanceof InExpression) {
-            InExpression in = (InExpression) expr;
-            collectExpr(in.getLeftExpression(), meta);
+            collectExpr(((InExpression) expr).getLeftExpression(), meta);
             
             return;
         }
@@ -460,6 +470,7 @@ public class OracleAstParser {
         // Expression이 이항 연산자(BinaryExpression)인 경우 (예: +, =, >, AND 등)
         if (expr instanceof BinaryExpression) {
             BinaryExpression be = (BinaryExpression) expr;
+            
             // 좌항과 우항을 재귀적으로 처리
             collectExpr(be.getLeftExpression(), meta);
             collectExpr(be.getRightExpression(), meta);
@@ -470,6 +481,7 @@ public class OracleAstParser {
         // Expression이 CASE 문(CaseExpression)인 경우
         if (expr instanceof CaseExpression) {
             CaseExpression ce = (CaseExpression) expr;
+            
             // SWITCH/WHEN/ELSE 항목들을 재귀적으로 처리
             if (ce.getSwitchExpression() != null)
                 collectExpr(ce.getSwitchExpression(), meta);
@@ -483,7 +495,6 @@ public class OracleAstParser {
     /** Unsafe 판단 헬퍼 **/
     // 두 피연산자가 모두 상수(Literal)인 비교 연산인지 확인하는 헬퍼 함수
     private boolean isConstantComparison(Expression expr) {
-
     	// 괄호 풀기
         Expression e = unwrap(expr);
         // 이항 연산자가 아니면 상수 비교가 아님
@@ -504,12 +515,27 @@ public class OracleAstParser {
         return isLiteral(l) && isLiteral(r);
     }
 
+    /** WHERE 1=1 허용 **/
+    private boolean isNumericOneEqualsOne(Expression expr) {
+        Expression e = unwrap(expr);
+        if (!(e instanceof BinaryExpression)) return false;
+
+        BinaryExpression be = (BinaryExpression) e;
+        Expression l = unwrap(be.getLeftExpression());
+        Expression r = unwrap(be.getRightExpression());
+
+        return (l instanceof LongValue && r instanceof LongValue)
+                && ((LongValue) l).getValue() == 1
+                && ((LongValue) r).getValue() == 1;
+    }
+
     /** 괄호를 제거하는 헬퍼 함수 **/
     private Expression unwrap(Expression e) {
         return (e instanceof Parenthesis)
                 ? ((Parenthesis) e).getExpression()
                 : e;
     }
+
     /*
      * NULL도 상수 리터럴로 간주하는 이유
      * - SQL 논리적 관점: 쿼리가 실행될 때마다 값이 변하지 않는 고정된 상수로 작동. 
@@ -529,6 +555,6 @@ public class OracleAstParser {
                 || e instanceof DateValue
                 || e instanceof TimeValue
                 || e instanceof TimestampValue
-                || e instanceof NullValue; // NULL도 상수 리터럴로 간주
+                || e instanceof NullValue;
     }
 }
